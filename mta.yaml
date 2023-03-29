@@ -1,0 +1,40 @@
+ID: calm-logs-push
+_schema-version: '3.1'
+version: 1.0.0-SNAPSHOT
+parameters:
+  enable-parallel-deployments: true
+  Xms: 1024m
+  Xmx: 4096m
+  memoryQuota: 4096M
+  instanceMaxCount: 4
+  upperThreshold: 896
+  lowerThreshold: 768
+  otelParams: -javaagent:BOOT-INF/lib/opentelemetry-javaagent-1.23.0.jar -Dotel.javaagent.enabled=true -Dotel.javaagent.extensions=BOOT-INF/lib/otel-agent-ext-java-1.4.0.jar -Dotel.resource.attributes=account=<account>,otel.poll.service.type=<service type>,otel.poll.data.center=CAN,otel.poll.every.second=60  -Dotel.service.name=calm-logs-push  -Dotel.propagators=sapuniversal  -Dotel.logs.exporter=otlp -Dotel.traces.exporter=none -Dotel.metrics.exporter=none
+
+modules:
+  - name: x-security-poc
+    type: java
+    path: .
+    properties:
+      SPRING_PROFILES_ACTIVE: default
+      JBP_CONFIG_COMPONENTS: "{jres: ['com.sap.xs.java.buildpack.jre.SAPMachineJRE']}"
+      JBP_CONFIG_OPEN_JDK_JRE: "{ jre: { version: 11.+ }}"
+      JBP_CONFIG_JAVA_OPTS: "[java_opts: '${otelParams} -Xshare:off -Xms${Xms} -Xmx${Xmx} -XX:MinHeapFreeRatio=30 -XX:MaxHeapFreeRatio=60 -XX:MaxMetaspaceSize=180m']"
+      MALLOC_ARENA_MAX: 2
+    build-parameters:
+      ignore: ["*.md"]
+      builder: custom
+      commands:
+        - mvn -B clean install
+      build-result: target/calm-logs-push.jar
+    parameters:
+       memory: ${memoryQuota}
+       disk-quota: 800M
+       no-route: true
+    requires:
+      - name: CALM-Security
+
+resources:
+  - name: CALM-Security
+    type: org.cloudfoundry.existing-service
+
